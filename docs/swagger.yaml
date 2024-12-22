@@ -1,0 +1,285 @@
+basePath: /
+definitions:
+  health.healthResponseBody:
+    properties:
+      build:
+        type: string
+      deployedAt:
+        type: string
+      serviceName:
+        example: identity
+        type: string
+      status:
+        example: OK
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  models.Pagination:
+    properties:
+      page:
+        type: integer
+      perPage:
+        type: integer
+      totalCount:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  products.CreateProductData:
+    properties:
+      description:
+        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        type: number
+      taxRate:
+        type: number
+    type: object
+  products.CreateProductsRequest:
+    properties:
+      products:
+        items:
+          $ref: '#/definitions/products.CreateProductData'
+        type: array
+    type: object
+  products.DeleteProductsRequest:
+    properties:
+      productIDs:
+        items:
+          type: integer
+        type: array
+    type: object
+  products.GetProductResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      metadata:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        type: number
+      taxRate:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  products.GetProductsResponse:
+    properties:
+      pagination:
+        $ref: '#/definitions/models.Pagination'
+      products:
+        items:
+          $ref: '#/definitions/sqlc.Product'
+        type: array
+    type: object
+  products.UpdateProductData:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      metadata:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        $ref: '#/definitions/types.NullFloat64'
+      taxRate:
+        $ref: '#/definitions/types.NullFloat64'
+    type: object
+  products.UpdateProductsRequest:
+    properties:
+      products:
+        items:
+          $ref: '#/definitions/products.UpdateProductData'
+        type: array
+    type: object
+  sqlc.Product:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      metadata:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        type: number
+      taxRate:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  types.NullFloat64:
+    properties:
+      float64:
+        type: number
+      valid:
+        description: Valid is true if Float64 is not NULL
+        type: boolean
+    type: object
+host: localhost
+info:
+  contact: {}
+  description: Service that manages Products
+  title: Products Service
+  version: 0.1.0
+paths:
+  /api/health:
+    get:
+      operationId: health-status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.healthResponseBody'
+      summary: Returns health status
+      tags:
+      - Other
+  /v1/products:
+    get:
+      operationId: products-listing
+      parameters:
+      - description: Query string for filtering and lookup name and description. Optional.
+        in: query
+        name: query
+        type: string
+      - description: Sorting column option. Optional. Defaults to 'name'
+        in: query
+        name: sortBy
+        type: string
+      - description: Sorting order. Either asc or desc. Optional, defaults to asc.
+        in: query
+        name: sortOrder
+        type: string
+      - description: Number of results per page. Optional, defaults to 10.
+        in: query
+        name: page
+        type: number
+      - description: Page number. Optional, defaults to 0.
+        in: query
+        name: perPage
+        type: number
+      responses:
+        "200":
+          description: Products listing
+          schema:
+            $ref: '#/definitions/products.GetProductsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+      summary: Products listing. Filterable and sortable via query params. Paginated.
+      tags:
+      - Products Listing
+    post:
+      operationId: create-products
+      parameters:
+      - description: create products data
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/products.CreateProductsRequest'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+      summary: Create products. Bulk operation.
+      tags:
+      - Create Products
+  /v1/products/{productID}:
+    delete:
+      operationId: delete-products
+      parameters:
+      - description: Delete product IDs
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/products.DeleteProductsRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+      summary: Delete products. Bulk operation
+      tags:
+      - Delete products
+    get:
+      operationId: product-details
+      parameters:
+      - description: Id of the product
+        in: path
+        name: productID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Product details
+          schema:
+            $ref: '#/definitions/products.GetProductResponse'
+        "404":
+          description: Product not found
+        "500":
+          description: Internal Server Error
+      summary: Product Details.
+      tags:
+      - Product Details
+    put:
+      operationId: update-products
+      parameters:
+      - description: update product details data
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/products.UpdateProductsRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+      summary: Update products details. Bulk operation
+      tags:
+      - Update products
+schemes:
+- https
+swagger: "2.0"

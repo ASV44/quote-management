@@ -39,6 +39,16 @@ func (h Handler) Register(route *echo.Group) {
 	route.DELETE("/products", h.DeleteProducts)
 }
 
+// CreateProducts godoc
+//
+//	@Summary	Create products. Bulk operation.
+//	@Tags		Create Products
+//	@ID			create-products
+//	@Param		body	body	CreateProductsRequest	false	"create products data"
+//	@Success	201
+//	@Failure	400	{object}	models.ErrorResponse
+//	@Failure	500
+//	@Router		/v1/products [post]
 func (h Handler) CreateProducts(c echo.Context) error {
 	var createProductsReq CreateProductsRequest
 	if err := c.Bind(&createProductsReq); err != nil {
@@ -58,11 +68,13 @@ func (h Handler) CreateProducts(c echo.Context) error {
 //	@Summary	Products listing. Filterable and sortable via query params. Paginated.
 //	@Tags		Products Listing
 //	@ID			products-listing
-//	@Param		query	query		string						false	"Query string for filtering and lookup name and description. Optional."
-//	@Param		page	query		number						false	"Number of results per page. Optional, defaults to 10."
-//	@Param		perPage	query		number						false	"Page number. Optional, defaults to 0."
-//	@Success	200		{object}	GetProductsResponse	"Products listing"
-//	@Failure	400		{object}	models.ErrorResponse
+//	@Param		query		query		string				false	"Query string for filtering and lookup name and description. Optional."
+//	@Param		sortBy		query		string				false	"Sorting column option. Optional. Defaults to 'name'"
+//	@Param		sortOrder	query		string				false	"Sorting order. Either asc or desc. Optional, defaults to asc."
+//	@Param		page		query		number				false	"Number of results per page. Optional, defaults to 10."
+//	@Param		perPage		query		number				false	"Page number. Optional, defaults to 0."
+//	@Success	200			{object}	GetProductsResponse	"Products listing"
+//	@Failure	400			{object}	models.ErrorResponse
 //	@Failure	500
 //	@Router		/v1/products [get]
 func (h Handler) GetProducts(c echo.Context) error {
@@ -83,11 +95,11 @@ func (h Handler) GetProducts(c echo.Context) error {
 // GetProduct godoc
 //
 //	@Summary	Product Details.
-//	@Tags		product
+//	@Tags		Product Details
 //	@ID			product-details
-//	@Param		productID	path		string			true	"Id of the product"
-//	@Success	200					{object}	GetProductResponse	"Product details"
-//	@Failure	404					"Product not found"
+//	@Param		productID	path		string				true	"Id of the product"
+//	@Success	200			{object}	GetProductResponse	"Product details"
+//	@Failure	404			"Product not found"
 //	@Failure	500
 //	@Router		/v1/products/{productID} [get]
 func (h Handler) GetProduct(c echo.Context) error {
@@ -110,6 +122,16 @@ func (h Handler) GetProduct(c echo.Context) error {
 	return c.JSON(http.StatusOK, productDetail)
 }
 
+// UpdateProducts godoc
+//
+//	@Summary	Update products details. Bulk operation
+//	@Tags		Update products
+//	@ID			update-products
+//	@Param		body	body	UpdateProductsRequest	false	"update product details data"
+//	@Success	204
+//	@Failure	400	{object}	models.ErrorResponse
+//	@Failure	500
+//	@Router		/v1/products/{productID} [put]
 func (h Handler) UpdateProducts(c echo.Context) error {
 	var updateProductsReq UpdateProductsRequest
 	if err := c.Bind(&updateProductsReq); err != nil {
@@ -124,6 +146,16 @@ func (h Handler) UpdateProducts(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// DeleteProducts godoc
+//
+//	@Summary	Delete products. Bulk operation
+//	@Tags		Delete products
+//	@ID			delete-products
+//	@Param		body	body	DeleteProductsRequest	false	"Delete product IDs"
+//	@Success	204
+//	@Failure	400	{object}	models.ErrorResponse
+//	@Failure	500
+//	@Router		/v1/products/{productID} [delete]
 func (h Handler) DeleteProducts(c echo.Context) error {
 	var deleteProductsReq DeleteProductsRequest
 	if err := c.Bind(&deleteProductsReq); err != nil {
