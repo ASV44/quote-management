@@ -8,12 +8,16 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 	"quote-management-tech-task/models"
 )
 
 type Products interface {
+	CreateProducts(ctx context.Context, products []CreateProductData) error
 	GetProducts(ctx context.Context, params GetProductsQueries) (GetProductsResponse, error)
 	GetProductByID(ctx context.Context, productID int32) (GetProductResponse, error)
+	UpdateProducts(ctx context.Context, products []UpdateProductData) error
+	DeleteProducts(ctx context.Context, productIDs []int32) error
 }
 
 // Handler handles HTTP requests for specific route
@@ -28,9 +32,25 @@ func NewHandler(service Products) Handler {
 }
 
 func (h Handler) Register(route *echo.Group) {
-	product := route.Group("/products")
-	product.GET("/", h.GetProducts)
-	product.POST("/:productID", h.GetProduct)
+	route.POST("/products", h.CreateProducts)
+	route.GET("/products", h.GetProducts)
+	route.GET("/products/:productID", h.GetProduct)
+	route.PUT("/products", h.UpdateProducts)
+	route.DELETE("/products", h.DeleteProducts)
+}
+
+func (h Handler) CreateProducts(c echo.Context) error {
+	var createProductsReq CreateProductsRequest
+	if err := c.Bind(&createProductsReq); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{Message: "failed to get create products request payload"})
+	}
+
+	if err := h.service.CreateProducts(c.Request().Context(), createProductsReq.Products); err != nil {
+		log.Errorf("failed to create products: %s", err.Error())
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusCreated)
 }
 
 // GetProducts godoc
@@ -53,6 +73,7 @@ func (h Handler) GetProducts(c echo.Context) error {
 
 	productResponse, err := h.service.GetProducts(c.Request().Context(), queryParams)
 	if err != nil {
+		log.Errorf("failed to get products: %s", err.Error())
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -82,8 +103,37 @@ func (h Handler) GetProduct(c echo.Context) error {
 	case errors.Is(err, pgx.ErrNoRows):
 		return c.NoContent(http.StatusNotFound)
 	case err != nil:
+		log.Errorf("failed to get product by ID: %s", err.Error())
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, productDetail)
+}
+
+func (h Handler) UpdateProducts(c echo.Context) error {
+	var updateProductsReq UpdateProductsRequest
+	if err := c.Bind(&updateProductsReq); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{Message: "failed to get update products request payload"})
+	}
+
+	if err := h.service.UpdateProducts(c.Request().Context(), updateProductsReq.Products); err != nil {
+		log.Errorf("failed to update products: %s", err.Error())
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h Handler) DeleteProducts(c echo.Context) error {
+	var deleteProductsReq DeleteProductsRequest
+	if err := c.Bind(&deleteProductsReq); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{Message: "failed to get delete products request payload"})
+	}
+
+	if err := h.service.DeleteProducts(c.Request().Context(), deleteProductsReq.ProductIDs); err != nil {
+		log.Errorf("failed to delete products: %s", err.Error())
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }

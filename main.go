@@ -14,6 +14,8 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {

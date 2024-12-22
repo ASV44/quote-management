@@ -9,6 +9,16 @@ import (
 	"context"
 )
 
+const deleteProducts = `-- name: DeleteProducts :exec
+DELETE FROM products
+WHERE id = ANY($1::INT[])
+`
+
+func (q *Queries) DeleteProducts(ctx context.Context, ids []int32) error {
+	_, err := q.db.Exec(ctx, deleteProducts, ids)
+	return err
+}
+
 const getProductByID = `-- name: GetProductByID :one
 SELECT id, name, description, price, tax_rate, metadata, created_at, updated_at
 FROM products
@@ -33,27 +43,49 @@ func (q *Queries) GetProductByID(ctx context.Context, id int32) (Product, error)
 
 const getProducts = `-- name: GetProducts :many
 SELECT id, name, description, price, tax_rate, metadata, created_at, updated_at
-FROM products
-WHERE name ILIKE '%' || $3::TEXT || '%'
-  OR description ILIKE '%' || $3::TEXT || '%'
-ORDER BY $4::TEXT
+FROM products p
+WHERE p.name ILIKE '%' || $3::TEXT || '%'
+  OR p.description ILIKE '%' || $3::TEXT || '%'
+ORDER BY
+    CASE WHEN $4::TEXT = 'name' AND $5::TEXT = 'asc' THEN p.name END ASC,
+    CASE WHEN $4::TEXT = 'name' AND $5::TEXT = 'desc' THEN p.name END DESC,
+    CASE WHEN $4::TEXT = 'price' AND $5::TEXT = 'asc' THEN p.price END ASC,
+    CASE WHEN $4::TEXT = 'price' AND $5::TEXT = 'desc' THEN p.price END DESC,
+    CASE WHEN $4::TEXT = 'created_at' AND $5::TEXT = 'asc' THEN p.created_at END ASC,
+    CASE WHEN $4::TEXT = 'created_at' AND $5::TEXT = 'desc' THEN p.created_at END DESC
 LIMIT $1
 OFFSET $2
 `
 
 type GetProductsParams struct {
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
-	Query  string `json:"query"`
-	Sortby string `json:"sortby"`
+	Limit     int32  `json:"limit"`
+	Offset    int32  `json:"offset"`
+	Query     string `json:"query"`
+	Sortby    string `json:"sortby"`
+	Sortorder string `json:"sortorder"`
 }
 
+// CASE
+// WHEN @sortOrder = 'asc' THEN
+//
+//	CASE WHEN @sortBy::TEXT = 'name' THEN p.name END
+//	CASE WHEN @sortBy::TEXT = 'price' THEN p.price END
+//	CASE WHEN @sortBy::TEXT = 'created_at' THEN p.created_at END
+//
+// WHEN @sortOrder = 'desc' THEN
+//
+//	CASE WHEN @sortBy::TEXT = 'name' THEN p.name END DESC
+//	CASE WHEN @sortBy::TEXT = 'price' THEN p.price END DESC
+//	CASE WHEN @sortBy::TEXT = 'created_at' THEN p.created_at END DESC
+//
+// END
 func (q *Queries) GetProducts(ctx context.Context, arg GetProductsParams) ([]Product, error) {
 	rows, err := q.db.Query(ctx, getProducts,
 		arg.Limit,
 		arg.Offset,
 		arg.Query,
 		arg.Sortby,
+		arg.Sortorder,
 	)
 	if err != nil {
 		return nil, err

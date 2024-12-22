@@ -7,9 +7,11 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"quote-management-tech-task/types"
 )
 
 var (
@@ -28,11 +30,11 @@ type CreateProductsBatchResults struct {
 }
 
 type CreateProductsParams struct {
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Price       float64 `json:"price"`
-	TaxRate     float64 `json:"taxRate"`
-	Metadata    []byte  `json:"metadata"`
+	Name        string          `json:"name"`
+	Description *string         `json:"description"`
+	Price       float64         `json:"price"`
+	TaxRate     float64         `json:"taxRate"`
+	Metadata    json.RawMessage `json:"metadata"`
 }
 
 func (q *Queries) CreateProducts(ctx context.Context, arg []CreateProductsParams) *CreateProductsBatchResults {
@@ -68,6 +70,70 @@ func (b *CreateProductsBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *CreateProductsBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const updateProducts = `-- name: UpdateProducts :batchexec
+UPDATE products
+SET name = COALESCE($1, name),
+    description = COALESCE($2, description),
+    price = COALESCE($3, price),
+    tax_rate = COALESCE($4, tax_rate),
+    metadata = COALESCE($5, metadata),
+    updated_at = NOW()
+WHERE id = $6
+`
+
+type UpdateProductsBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type UpdateProductsParams struct {
+	Name        *string           `json:"name"`
+	Description *string           `json:"description"`
+	Price       types.NullFloat64 `json:"price"`
+	TaxRate     types.NullFloat64 `json:"taxRate"`
+	Metadata    json.RawMessage   `json:"metadata"`
+	ID          int32             `json:"id"`
+}
+
+func (q *Queries) UpdateProducts(ctx context.Context, arg []UpdateProductsParams) *UpdateProductsBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.Name,
+			a.Description,
+			a.Price,
+			a.TaxRate,
+			a.Metadata,
+			a.ID,
+		}
+		batch.Queue(updateProducts, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &UpdateProductsBatchResults{br, len(arg), false}
+}
+
+func (b *UpdateProductsBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *UpdateProductsBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

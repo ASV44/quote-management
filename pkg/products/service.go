@@ -19,29 +19,50 @@ func NewService(db *sqlc.Queries) Service {
 	}
 }
 
-const defaultPerPage = 10
+func (s Service) CreateProducts(ctx context.Context, products []CreateProductData) error {
+	createProductsParams := make([]sqlc.CreateProductsParams, 0, len(products))
+	for _, product := range products {
+		createProductsParams = append(createProductsParams, sqlc.CreateProductsParams{
+			Name:        product.Name,
+			Description: &product.Description,
+			Price:       product.Price,
+			TaxRate:     product.TaxRate,
+			Metadata:    product.Metadata,
+		})
+	}
+
+	if err := s.db.CreateProducts(ctx, createProductsParams).Close(); err != nil {
+		return fmt.Errorf("failed to bulk insert products: %w", err)
+	}
+
+	return nil
+}
 
 func (s Service) GetProducts(
 	ctx context.Context,
 	queryParams GetProductsQueries,
 ) (GetProductsResponse, error) {
 	var sortBy string
-	// Convert payload param to column name
+	// Convert payload param to column name and add default in case it is empty or not supported or invalid value
 	switch queryParams.SortBy {
-	case Name:
-		sortBy = "name"
-	case Price:
-		sortBy = "price"
+	case Name, Price:
+		sortBy = string(queryParams.SortBy)
 	case CreatedAt:
 		sortBy = "created_at"
 	default:
-		sortBy = "name"
+		sortBy = string(Name)
 	}
 
-	if queryParams.SortOrder == Descending {
-		sortBy = fmt.Sprintf("%s DESC", sortBy)
+	// Convert payload param to sorting order and add default in case it is empty or invalid
+	var sortOrder string
+	switch queryParams.SortOrder {
+	case Ascending, Descending:
+		sortOrder = string(queryParams.SortOrder)
+	default:
+		sortOrder = string(Ascending)
 	}
 
+	const defaultPerPage = 10
 	if queryParams.PerPage == 0 || queryParams.PerPage < 0 {
 		queryParams.PerPage = defaultPerPage
 	}
@@ -51,10 +72,11 @@ func (s Service) GetProducts(
 	}
 
 	products, err := s.db.GetProducts(ctx, sqlc.GetProductsParams{
-		Query:  queryParams.FilterQuery,
-		Sortby: sortBy,
-		Limit:  queryParams.PerPage,
-		Offset: (queryParams.Page - 1) * queryParams.PerPage,
+		Query:     queryParams.FilterQuery,
+		Sortby:    sortBy,
+		Sortorder: sortOrder,
+		Limit:     queryParams.PerPage,
+		Offset:    (queryParams.Page - 1) * queryParams.PerPage,
 	})
 	if err != nil {
 		return GetProductsResponse{}, err
@@ -83,4 +105,32 @@ func (s Service) GetProductByID(ctx context.Context, productID int32) (GetProduc
 	}
 
 	return GetProductResponse{Product: product}, nil
+}
+
+func (s Service) UpdateProducts(ctx context.Context, products []UpdateProductData) error {
+	updateProductsParams := make([]sqlc.UpdateProductsParams, 0, len(products))
+	for _, product := range products {
+		updateProductsParams = append(updateProductsParams, sqlc.UpdateProductsParams{
+			ID:          product.ID,
+			Name:        product.Name,
+			Description: product.Description,
+			Price:       product.Price,
+			TaxRate:     product.TaxRate,
+			Metadata:    product.Metadata,
+		})
+	}
+
+	if err := s.db.UpdateProducts(ctx, updateProductsParams).Close(); err != nil {
+		return fmt.Errorf("failed to bulk insert products: %w", err)
+	}
+
+	return nil
+}
+
+func (s Service) DeleteProducts(ctx context.Context, productIDs []int32) error {
+	if err := s.db.DeleteProducts(ctx, productIDs); err != nil {
+		return fmt.Errorf("failed to bulk delete products: %w", err)
+	}
+
+	return nil
 }

@@ -13,7 +13,22 @@ sql:
         json_tags_id_uppercase: true
         json_tags_case_style: 'camel'
         overrides:
+          - db_type: 'timestamptz'
+            go_type: 'time.Time'
+          - db_type: 'pg_catalog.timestamptz'
+            go_type: 'time.Time'
+          - db_type: 'pg_catalog.timestamp'
+            go_type: 'time.Time'
+          - db_type: 'date'
+            go_type: 'time.Time'
           - go_type: 'float64'
             db_type: 'pg_catalog.numeric'
           - db_type: 'pg_catalog.numeric'
             nullable: true
+            go_type:
+              import: 'quote-management-tech-task/types'
+              type: 'NullFloat64'
+          - column: 'products.metadata'
+            go_type:
+              import: 'encoding/json'
+              type: 'RawMessage'

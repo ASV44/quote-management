@@ -44,6 +44,7 @@ func NewServer(appConfig config.Config, db *sqlc.Queries) Server {
 }
 
 func addMiddleware(echo *echo.Echo) {
+	echo.Use(echoMiddleware.Logger())
 	echo.Use(echoMiddleware.Recover())
 	echo.Use(echoMiddleware.Secure())
 	echo.Pre(echoMiddleware.RemoveTrailingSlash())
