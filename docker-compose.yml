@@ -1,0 +1,56 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '2112:2112'
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: db
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_DB=products_service
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: /usr/bin/pg_isready -U postgres -d postgres
+      interval: 5s
+      timeout: 20s
+      retries: 120
+    restart: unless-stopped
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  migrations:
+    build:
+      context: .
+      dockerfile: migrations.Dockerfile
+    container_name: migrations
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_NAME=products_service
+      - DB_PORT=5432
+      - DB_SSLMODE=disable
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    entrypoint:
+      - 'sh'
+      - '-c'
+    command: [ '/wait-for db:5432 -- /db_entrypoint.sh up' ]
+
+volumes:
+  db:
+    driver: local
